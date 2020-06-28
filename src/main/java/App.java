@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /*
@@ -13,8 +15,87 @@ public class App {
     }
 
     public String bestCharge(List<String> inputs) {
-        //TODO: write code here
+        List<Item> itemRepositoryAll = itemRepository.findAll();
+        List<SalesPromotion> salesPromotionRepositoryAll = salesPromotionRepository.findAll();
+        String orderStr = "============= Order details =============\n";
+        String splitStr = "-----------------------------------\n";
+        double totalPrice = 0.0;
+        double beforeTotalPrice = 0.0;
+        for(String input: inputs){      //遍历输入内容
+            String[] list = input.split(" ");
+            String itemId = list[0];
+            String itemCount = list[2];
+            for(int i = 0; i < itemRepositoryAll.size(); i++){
+                Item item = itemRepositoryAll.get(i);
+                if(itemId.equals(item.getId())){
+                    String itemName = item.getName();
+                    double itemPrice = item.getPrice();
+                    double itemTotalPrice = itemPrice * Double.parseDouble(itemCount);
+                    beforeTotalPrice += itemTotalPrice;
+                    orderStr += itemName + " x " + itemCount + " = " + (int)itemTotalPrice + " yuan\n";
+                }
+            }
+        }
+        totalPrice = beforeTotalPrice;
+        //  查找优惠
+        String salesPromotionStr = "";
+        for(int i = 0; i < salesPromotionRepositoryAll.size(); i++){
+            SalesPromotion salesPromotion = salesPromotionRepositoryAll.get(i);
+            if(salesPromotion.getType().equals("BUY_30_SAVE_6_YUAN")){
+                if(beforeTotalPrice >= 30){
+                    totalPrice = beforeTotalPrice - 6;
+                    salesPromotionStr = "满30减6 yuan，saving 6 yuan\n";
+                }
+            }
+            if(salesPromotion.getType().equals("50%_DISCOUNT_ON_SPECIFIED_ITEMS")){
+                List<String> relatedItems = salesPromotion.getRelatedItems();
+                double totalPriceTmp = beforeTotalPrice;
+                double savingPrice = 0.0;
+                List<String> actualRelatedItems = new ArrayList<>();
+                for(String input: inputs){      //遍历输入内容
+                    String[] list = input.split(" ");
+                    String itemId = list[0];
+                    String itemCount = list[2];
+                    for(int j = 0; j < relatedItems.size(); j++){
+                        if(itemId.equals(relatedItems.get(j))){
+                            for(int k = 0; k < itemRepositoryAll.size(); k++){
+                                Item item = itemRepositoryAll.get(k);
+                                if(itemId.equals(item.getId())){
+                                    String itemName = item.getName();
+                                    double itemPrice = item.getPrice() * 0.5;
+                                    double itemTotalPrice = itemPrice * Double.parseDouble(itemCount);
+                                    savingPrice += itemTotalPrice;
+                                    actualRelatedItems.add(itemName);
+                                }
+                            }
+                        }
+                    }
+                }
+                totalPriceTmp -= savingPrice;
+                if(totalPrice > totalPriceTmp){
+                    totalPrice = totalPriceTmp;
+                    salesPromotionStr = "Half price for certain dishes (";
+                    for(int j = 0; j < actualRelatedItems.size(); j++){
+                        if( j+1 < actualRelatedItems.size()){
+                            salesPromotionStr += actualRelatedItems.get(j);
+                        } else {
+                            salesPromotionStr += "，" + actualRelatedItems.get(j) + ")，saving "+ (int)savingPrice + " yuan\n";
+                        }
 
-        return null;
+                    }
+                }
+            }
+        }
+        if(totalPrice != beforeTotalPrice){
+            orderStr += splitStr + "Promotion used:\n" + salesPromotionStr + splitStr +
+                    "Total：" + (int)totalPrice + " yuan\n" +
+                    "===================================";
+        } else {
+            orderStr += splitStr +
+                    "Total：" + (int)totalPrice + " yuan\n" +
+                    "===================================";
+        }
+
+        return orderStr;
     }
 }
